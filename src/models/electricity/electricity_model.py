@@ -12,7 +12,7 @@ import pyomo.environ as pyo
 
 # Import python modules
 from src.common.model import Model
-from src.models.electricity.elec_config import ElecConfig
+from src.models.electricity.elec_config import ElecConfig, ExpansionLearningType
 
 # move to new file
 from src.models.electricity.utilities import ElectricityMethods as em
@@ -41,14 +41,7 @@ class PowerModel(Model):
         ###########################################################################################
         # Settings
 
-        self.sw_agg_years = setA.sw_agg_years
-        self.sw_rm = setA.sw_rm
-        self.sw_ramp = setA.sw_ramp
-        self.sw_reserves = setA.sw_reserves
         self.sw_h2int = 0
-
-        # 0=no learning, 1=linear iterations, 2=nonlinear learning
-        self.sw_learning = setA.sw_learning
 
         ###########################################################################################
         # TODO: Example future model concept
@@ -122,7 +115,10 @@ class PowerModel(Model):
         # if capacity expansion and learning are on
         # this block of code demonstrates the application of the switch option,
         # but in general we found it easier to read if we continued to use if statements
-        if self.sw_learning > 0:
+        if elec_config.expansion_learning_type in {
+            ExpansionLearningType.LINEAR,
+            ExpansionLearningType.NONLINEAR,
+        }:
             self.declare_set(
                 'LearningRate_index',
                 all_frames['LearningRate'],
@@ -150,13 +146,13 @@ class PowerModel(Model):
             self.declare_set('TranLineLimitInt_index', all_frames['TranLimitCapInt'])
 
         # if ramping requirements are on
-        if self.sw_ramp:
+        if elec_config.ramping_required:
             self.declare_set('RampUpCost_index', all_frames['RampUpCost'])
             self.declare_set('RampRate_index', all_frames['RampRate'])
             self.declare_set('generation_ramp_index', setA.generation_ramp_index)
 
         # if operating reserve requirements are on
-        if self.sw_reserves:
+        if elec_config.spinning_reserve_required:
             self.declare_set('restypes', setA.restypes)
             self.declare_set('reserves_procurement_index', setA.reserves_procurement_index)
             self.declare_set('RegReservesCost_index', all_frames['RegReservesCost'])
@@ -198,7 +194,7 @@ class PowerModel(Model):
             )
 
             # if capacity expansion and learning are on
-            if self.sw_learning > 0:
+            if elec_config.expansion_learning_type > 0:
                 self.declare_param(
                     'LearningRate', self.LearningRate_index, all_frames['LearningRate']
                 )
@@ -212,8 +208,11 @@ class PowerModel(Model):
                 )
 
             # if learning is not to be solved nonlinearly directly in the obj
-            if self.sw_learning < 2:
-                if self.sw_learning == 0:
+            if elec_config.expansion_learning_type in {
+                ExpansionLearningType.DISABLED,
+                ExpansionLearningType.LINEAR,
+            }:
+                if elec_config.expansion_learning_type == ExpansionLearningType.DISABLED:
                     mute = False
                 else:
                     mute = True
@@ -238,17 +237,17 @@ class PowerModel(Model):
             )
 
         # if reserve margin requirements are on
-        if self.sw_rm:
+        if elec_config.reserve_margin_required:
             self.declare_param('ReserveMargin', self.region, all_frames['ReserveMargin'])
 
         # if ramping requirements are on
-        if self.sw_ramp:
+        if elec_config.ramping_required:
             self.declare_param('RampUpCost', self.RampUpCost_index, all_frames['RampUpCost'])
             self.declare_param('RampDownCost', self.RampUpCost_index, all_frames['RampDownCost'])
             self.declare_param('RampRate', self.RampRate_index, all_frames['RampRate'])
 
         # if operating reserve requirements are on
-        if self.sw_reserves:
+        if elec_config.spinning_reserve_required:
             self.declare_param(
                 'RegReservesCost', self.RegReservesCost_index, all_frames['RegReservesCost']
             )
@@ -311,16 +310,16 @@ class PowerModel(Model):
             self.declare_var('trade_international', self.trade_interational_index)
 
         # if reserve margin constraints are on
-        if self.sw_rm:
+        if elec_config.reserve_margin_required:
             self.declare_var('storage_avail_cap', self.Storage_index)
 
         # if ramping requirements are on
-        if self.sw_ramp:
+        if elec_config.ramping_required:
             self.declare_var('generation_ramp_up', self.generation_ramp_index)
             self.declare_var('generation_ramp_down', self.generation_ramp_index)
 
         # if operating reserve requirements are on
-        if self.sw_reserves:
+        if elec_config.spinning_reserve_required:
             self.declare_var('reserves_procurement', self.reserves_procurement_index)
 
         ###########################################################################################
@@ -416,7 +415,7 @@ class PowerModel(Model):
             self.fixed_om_cost = pyo.Expression(expr=fixed_om_cost)
 
             # nonlinear expansion costs
-            if self.sw_learning == 2:
+            if elec_config.expansion_learning_type == ExpansionLearningType.NONLINEAR:
 
                 def capacity_expansion_cost(self):
                     """Capacity expansion cost component for the objective function if
@@ -504,7 +503,7 @@ class PowerModel(Model):
             self.trade_cost = pyo.Expression(expr=trade_cost)
 
         # if ramping requirements are on
-        if self.sw_ramp:
+        if elec_config.ramping_required:
 
             def ramp_cost(self):
                 """Ramping cost component for the objective function.
@@ -528,7 +527,7 @@ class PowerModel(Model):
             self.ramp_cost = pyo.Expression(expr=ramp_cost)
 
         # if operating reserve requirements are on
-        if self.sw_reserves:
+        if elec_config.spinning_reserve_required:
 
             def operating_reserves_cost(self):
                 """Operating reserve cost component for the objective function.
@@ -560,14 +559,14 @@ class PowerModel(Model):
             return (
                 self.dispatch_cost
                 + self.unmet_load_cost
-                + (self.ramp_cost if self.sw_ramp else 0)
+                + (self.ramp_cost if elec_config.ramping_required else 0)
                 + (self.trade_cost if elec_config.regional_exchange else 0)
                 + (
                     self.capacity_expansion_cost + self.fixed_om_cost
                     if elec_config.capacity_expansion
                     else 0
                 )
-                + (self.operating_reserves_cost if self.sw_reserves else 0)
+                + (self.operating_reserves_cost if elec_config.spinning_reserve_required else 0)
             )
 
         self.total_cost = pyo.Objective(rule=electricity_objective_function, sense=pyo.minimize)
@@ -756,7 +755,7 @@ class PowerModel(Model):
                         self.reserves_procurement[(restype, T_disp, y, r, step, hr)]
                         for restype in self.restypes
                     )
-                    if self.sw_reserves
+                    if elec_config.spinning_reserve_required
                     else 0
                 )
                 <= self.capacity_total[(r, self.MapHourSeason[hr], T_disp, step, y)]
@@ -792,7 +791,7 @@ class PowerModel(Model):
                     self.reserves_procurement[(restype, T_hydro, y, r, step, hr)]
                     for restype in self.restypes
                 )
-                if self.sw_reserves
+                if elec_config.spinning_reserve_required
                 else 0
             ) <= self.capacity_total[
                 (r, self.MapHourSeason[hr], T_hydro, step, y)
@@ -828,7 +827,7 @@ class PowerModel(Model):
                         self.reserves_procurement[(restype, T_vre, y, r, step, hr)]
                         for restype in self.restypes
                     )
-                    if self.sw_reserves
+                    if elec_config.spinning_reserve_required
                     else 0
                 )
                 <= self.capacity_total[(r, self.MapHourSeason[hr], T_vre, step, y)]
@@ -896,7 +895,7 @@ class PowerModel(Model):
                         self.reserves_procurement[(restype, tech, y, r, step, hr)]
                         for restype in self.restypes
                     )
-                    if self.sw_reserves
+                    if elec_config.spinning_reserve_required
                     else 0
                 )
                 <= self.capacity_total[(r, self.MapHourSeason[hr], tech, step, y)]
@@ -1112,7 +1111,7 @@ class PowerModel(Model):
                 )
 
         # if reserve margin requirements are on
-        if elec_config.capacity_expansion and self.sw_rm:
+        if elec_config.capacity_expansion and elec_config.reserve_margin_required:
             self.populate_RM_sets = pyo.BuildAction(rule=em.populate_RM_sets_rule)
 
             @self.Constraint(self.demand_balance_index)
@@ -1211,7 +1210,7 @@ class PowerModel(Model):
                 )
 
         # if ramping requirements are on
-        if self.sw_ramp:
+        if elec_config.ramping_required:
 
             @self.Constraint(self.ramp_first_hour_balance_index)
             def ramp_first_hour_balance(self, T_conv, y, r, step, hr1):
@@ -1339,7 +1338,7 @@ class PowerModel(Model):
                 )
 
         # if operating reserve requirements are on
-        if self.sw_reserves:
+        if elec_config.spinning_reserve_required:
             self.populate_reserves_sets = pyo.BuildAction(rule=em.populate_reserves_sets_rule)
 
             @self.Constraint(self.demand_balance_index)

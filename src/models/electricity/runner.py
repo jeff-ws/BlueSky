@@ -18,7 +18,7 @@ from logging import getLogger
 from definitions import PROJECT_ROOT
 import src.models.electricity.preprocessor as prep
 import src.models.electricity.postprocessor as post
-from src.models.electricity.elec_config import ElecConfig
+from src.models.electricity.elec_config import ElecConfig, ExpansionLearningType
 from src.models.electricity.utilities import check_results
 from src.models.electricity.electricity_model import PowerModel
 from src.common.config_setup import Config_settings
@@ -69,7 +69,7 @@ def build_elec_model(all_frames, setin, elec_config: ElecConfig) -> PowerModel:
     return instance
 
 
-def solve_elec_model(instance):
+def solve_elec_model(instance, elec_config: ElecConfig):
     """solve electicity model
 
     Parameters
@@ -83,7 +83,9 @@ def solve_elec_model(instance):
 
     logger.info('Solving Pyomo')
 
-    if instance.sw_learning == 1:  # run iterative learning
+    if (
+        elec_config.expansion_learning_type == ExpansionLearningType.LINEAR
+    ):  # run iterative learning
         # Set any high tolerance
         tol = 999
         i = 0
@@ -191,7 +193,7 @@ def run_elec_model(settings: Config_settings, elec_config: ElecConfig, solve=Tru
 
     ###############################################################################################
     # Solve model
-    solve_elec_model(instance)
+    solve_elec_model(instance, elec_config=elec_config)
 
     timer.toc('solve model finished')
     logger.info('Solve complete')
