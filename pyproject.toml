@@ -5,9 +5,8 @@ line-length = 100
 quote-style = 'single'
 
 [tool.pytest.ini_options]
-minversion = "6.0"
-testpaths = ["unit_tests"]
-log_file = "unit_tests/test_logs/testlog.log"
+testpaths = ["tests"]
+log_file = "tests/logs/testlog.log"
 log_file_level = "INFO"
 
 
