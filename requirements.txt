@@ -1,0 +1,9 @@
+# a "starter version" of known essentials
+
+pyomo
+numpy
+highspy
+ruff
+pytest
+pydantic
+pandas

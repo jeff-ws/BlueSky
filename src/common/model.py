@@ -272,8 +272,10 @@ class Model(pyo.ConcreteModel):
             scols = list(sdata.index.names)
             for label in scols:
                 if not label:
-                    raise ValueError(f'Unnamed index in {sname} pandas object; check names of indices in input DataFrame or Series \
-                    or set use_columns = True to create set with columnar data (and column names as index labels)')
+                    raise ValueError(
+                        f'Unnamed index in {sname} pandas object; check names of indices in input DataFrame or Series \
+                    or set use_columns = True to create set with columnar data (and column names as index labels)'
+                    )
 
         # declare_set -- update cols_dict with column names
         self.cols_dict[sname] = scols
