@@ -16,6 +16,7 @@ from pyomo.common.numeric_types import value
 
 from definitions import PROJECT_ROOT
 from src.common import config_setup
+from src.models.electricity.elec_config import ElecConfig
 from src.models.electricity.runner import run_elec_model
 
 
@@ -31,7 +32,11 @@ def test_basic_run():
     config_path = Path(PROJECT_ROOT, 'tests/electric/basic_test_config.toml')
     settings = config_setup.Config_settings(config_path, test=True)
 
-    elec_model = run_elec_model(settings, solve=True)
+    # introduce the new ElecConfig
+    elec_config_path = Path(PROJECT_ROOT, 'tests/electric/basic_elec_config.toml')
+    elec_config = ElecConfig.from_toml(elec_config_path)
+
+    elec_model = run_elec_model(settings, elec_config, solve=True)
 
     assert value(elec_model.total_cost) == pytest.approx(3452103301.9), (
         f'found {value(elec_model.total_cost)} total cost'

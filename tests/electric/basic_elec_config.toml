@@ -1,0 +1,14 @@
+[natural_gas]
+
+cost=5  # some dummy data
+
+[elec_config]
+input_path='input/electricity/cem_inputs'
+output_path='output'
+regional_exchange=false
+capacity_expansion=false
+expansion_learning_type='disabled'  # disabled/linear/nonlinear
+reserve_margin_required=false
+spinning_reserve_required=false
+ramping_required=false
+aggregated_years=false

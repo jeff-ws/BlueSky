@@ -12,6 +12,7 @@ import pyomo.environ as pyo
 
 # Import python modules
 from src.common.model import Model
+from src.models.electricity.elec_config import ElecConfig
 
 # move to new file
 from src.models.electricity.utilities import ElectricityMethods as em
@@ -34,15 +35,12 @@ class PowerModel(Model):
         Contains all other non-dataframe inputs
     """
 
-    def __init__(self, all_frames, setA, *args, **kwargs):
+    def __init__(self, all_frames, setA, elec_config: ElecConfig, *args, **kwargs):
         Model.__init__(self, *args, **kwargs)
 
         ###########################################################################################
         # Settings
 
-        self.OUTPUT_ROOT = setA.OUTPUT_ROOT
-        self.sw_trade = setA.sw_trade
-        self.sw_expansion = setA.sw_expansion
         self.sw_agg_years = setA.sw_agg_years
         self.sw_rm = setA.sw_rm
         self.sw_ramp = setA.sw_ramp
@@ -114,7 +112,7 @@ class PowerModel(Model):
             self.declare_set(tss, getattr(setA, tss))
 
         # if capacity expansion is on
-        if self.sw_expansion:
+        if elec_config.capacity_expansion:
             self.declare_set('capacity_builds_index', all_frames['CapCost'])
             self.declare_set('FOMCost_index', all_frames['FOMCost'])
             self.declare_set('Build_index', setA.Build_index)
@@ -126,19 +124,23 @@ class PowerModel(Model):
         # but in general we found it easier to read if we continued to use if statements
         if self.sw_learning > 0:
             self.declare_set(
-                'LearningRate_index', all_frames['LearningRate'], switch=self.sw_expansion
+                'LearningRate_index',
+                all_frames['LearningRate'],
+                switch=elec_config.capacity_expansion,
             )
             self.declare_set(
-                'CapCostInitial_index', all_frames['CapCostInitial'], switch=self.sw_expansion
+                'CapCostInitial_index',
+                all_frames['CapCostInitial'],
+                switch=elec_config.capacity_expansion,
             )
             self.declare_set(
                 'SupplyCurveLearning_index',
                 all_frames['SupplyCurveLearning'],
-                switch=self.sw_expansion,
+                switch=elec_config.capacity_expansion,
             )
 
         # if trade operation is on
-        if self.sw_trade:
+        if elec_config.regional_exchange:
             self.declare_set('TranCost_index', all_frames['TranCost'])
             self.declare_set('TranLimit_index', all_frames['TranLimit'])
             self.declare_set('trade_interregional_index', setA.trade_interregional_index)
@@ -189,7 +191,7 @@ class PowerModel(Model):
         self.declare_param('H2Heatrate', None, setA.H2Heatrate)
 
         # if capacity expansion is on
-        if self.sw_expansion:
+        if elec_config.capacity_expansion:
             self.declare_param('FOMCost', self.FOMCost_index, all_frames['FOMCost'])
             self.declare_param(
                 'CapacityCredit', self.CapacityCredit_index, all_frames['CapacityCredit']
@@ -223,7 +225,7 @@ class PowerModel(Model):
                 )
 
         # if trade operation is on
-        if self.sw_trade:
+        if elec_config.regional_exchange:
             self.declare_param('TransLoss', None, setA.TransLoss)
             self.declare_param('TranCost', self.TranCost_index, all_frames['TranCost'])
             self.declare_param('TranLimit', self.TranLimit_index, all_frames['TranLimit'])
@@ -279,8 +281,8 @@ class PowerModel(Model):
         # fit something similar to this example structure below.
 
         self.var_switch_dict = {
-            'capacity_builds': self.sw_expansion,
-            'capacity_retirements': self.sw_expansion,
+            'capacity_builds': elec_config.capacity_expansion,
+            'capacity_retirements': elec_config.capacity_expansion,  # TODO:  this should be retirement capable?
         }
 
         for var in self.var_switch_dict.keys():
@@ -299,12 +301,12 @@ class PowerModel(Model):
         self.declare_var('storage_level', self.Storage_index)
 
         # if capacity expansion is on
-        if self.sw_expansion:
+        if elec_config.capacity_expansion:
             self.declare_var('capacity_builds', self.capacity_builds_index)
             self.declare_var('capacity_retirements', self.capacity_retirements_index)
 
         # if trade operation is on
-        if self.sw_trade:
+        if elec_config.regional_exchange:
             self.declare_var('trade_interregional', self.trade_interregional_index)
             self.declare_var('trade_international', self.trade_interational_index)
 
@@ -393,7 +395,7 @@ class PowerModel(Model):
         self.unmet_load_cost = pyo.Expression(expr=unmet_load_cost)
 
         # if capacity expansion is on
-        if self.sw_expansion:
+        if elec_config.capacity_expansion:
             # TODO: choosing summer for capacity, may want to revisit this, fix hard coded value
             def fixed_om_cost(self):
                 """Fixed operation and maintenance (FOM) cost component for the objective function.
@@ -475,7 +477,7 @@ class PowerModel(Model):
                 self.capacity_expansion_cost = pyo.Expression(expr=capacity_expansion_cost)
 
         # if trade operation is on
-        if self.sw_trade:
+        if elec_config.regional_exchange:
 
             def trade_cost(self):
                 """Interregional and international trade cost component for the objective function.
@@ -559,8 +561,12 @@ class PowerModel(Model):
                 self.dispatch_cost
                 + self.unmet_load_cost
                 + (self.ramp_cost if self.sw_ramp else 0)
-                + (self.trade_cost if self.sw_trade else 0)
-                + (self.capacity_expansion_cost + self.fixed_om_cost if self.sw_expansion else 0)
+                + (self.trade_cost if elec_config.regional_exchange else 0)
+                + (
+                    self.capacity_expansion_cost + self.fixed_om_cost
+                    if elec_config.capacity_expansion
+                    else 0
+                )
                 + (self.operating_reserves_cost if self.sw_reserves else 0)
             )
 
@@ -568,6 +574,8 @@ class PowerModel(Model):
 
         ###########################################################################################
         # Constraints
+
+        self.sw_trade = elec_config.regional_exchange  # TODO:  temporary fix as the rule needs this
 
         self.populate_demand_balance_sets = pyo.BuildAction(
             rule=em.populate_demand_balance_sets_rule
@@ -605,14 +613,14 @@ class PowerModel(Model):
                     - self.trade_interregional[(r1, r, y, hr)]
                     for (r1) in self.TradeSetDemandBalance[(y, r, hr)]
                 )
-                if self.sw_trade and r in self.region_trade
+                if elec_config.regional_exchange and r in self.region_trade
                 else 0
             ) + (
                 sum(
                     self.trade_international[(r, R_int, y, step, hr)] * (1 - self.TransLoss)
                     for (R_int, step) in self.TradeCanSetDemandBalance[(y, r, hr)]
                 )
-                if (self.sw_trade == 1 and r in self.region_int_trade)
+                if (elec_config.regional_exchange and r in self.region_int_trade)
                 else 0
             )
 
@@ -954,7 +962,7 @@ class PowerModel(Model):
                 (r, season, tech, step, y)
             ] + (
                 sum(self.capacity_builds[(r, tech, year, step)] for year in self.year if year <= y)
-                if self.sw_expansion and (tech, step) in self.Build_index
+                if elec_config.capacity_expansion and (tech, step) in self.Build_index
                 else 0
             ) - (
                 sum(
@@ -962,12 +970,13 @@ class PowerModel(Model):
                     for year in self.year
                     if year <= y
                 )
-                if self.sw_expansion and (tech, y, r, step) in self.capacity_retirements_index
+                if elec_config.capacity_expansion
+                and (tech, y, r, step) in self.capacity_retirements_index
                 else 0
             )
 
         # if capacity expansion is on
-        if self.sw_expansion:
+        if elec_config.capacity_expansion:
 
             @self.Constraint(self.capacity_retirements_index)
             def capacity_retirements_ub(self, tech, y, r, step):
@@ -1015,7 +1024,7 @@ class PowerModel(Model):
                 )
 
         # if trade operation is on
-        if self.sw_trade and len(self.TranLineLimitInt_index) != 0:
+        if elec_config.regional_exchange and len(self.TranLineLimitInt_index) != 0:
             self.populate_trade_sets = pyo.BuildAction(rule=em.populate_trade_sets_rule)
 
             @self.Constraint(self.TranLineLimitInt_index)
@@ -1103,7 +1112,7 @@ class PowerModel(Model):
                 )
 
         # if reserve margin requirements are on
-        if self.sw_expansion and self.sw_rm:
+        if elec_config.capacity_expansion and self.sw_rm:
             self.populate_RM_sets = pyo.BuildAction(rule=em.populate_RM_sets_rule)
 
             @self.Constraint(self.demand_balance_index)

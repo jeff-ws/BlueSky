@@ -18,6 +18,7 @@ from logging import getLogger
 from definitions import PROJECT_ROOT
 import src.models.electricity.preprocessor as prep
 import src.models.electricity.postprocessor as post
+from src.models.electricity.elec_config import ElecConfig
 from src.models.electricity.utilities import check_results
 from src.models.electricity.electricity_model import PowerModel
 from src.common.config_setup import Config_settings
@@ -35,7 +36,7 @@ data_root = Path(PROJECT_ROOT, 'src/models/electricity/input')
 # RUN MODEL
 
 
-def build_elec_model(all_frames, setin) -> PowerModel:
+def build_elec_model(all_frames, setin, elec_config: ElecConfig) -> PowerModel:
     """building pyomo electricity model
 
     Parameters
@@ -52,7 +53,7 @@ def build_elec_model(all_frames, setin) -> PowerModel:
     """
     # Building model
     logger.info('Build Pyomo')
-    instance = PowerModel(all_frames, setin)
+    instance = PowerModel(all_frames, setin, elec_config=elec_config)
 
     # add electricity price dual
     instance.dual = pyo.Suffix(direction=pyo.Suffix.IMPORT)
@@ -144,7 +145,7 @@ def solve_elec_model(instance):
         exit()
 
 
-def run_elec_model(settings: Config_settings, solve=True) -> PowerModel:
+def run_elec_model(settings: Config_settings, elec_config: ElecConfig, solve=True) -> PowerModel:
     """build electricity model (and solve if solve=True) after passing in settings
 
     Parameters
@@ -181,7 +182,7 @@ def run_elec_model(settings: Config_settings, solve=True) -> PowerModel:
     ###############################################################################################
     # Build model
 
-    instance = build_elec_model(all_frames, setin)
+    instance = build_elec_model(all_frames, setin, elec_config=elec_config)
     timer.toc('build model finished')
 
     # stop here if no solve requested...
@@ -211,14 +212,14 @@ def run_elec_model(settings: Config_settings, solve=True) -> PowerModel:
 
     logger.info('dispatch cost value =' + str(pyo.value(instance.dispatch_cost)))
     logger.info('unmet load cost value =' + str(pyo.value(instance.unmet_load_cost)))
-    if instance.sw_expansion:
+    if elec_config.capacity_expansion:
         logger.info('cap expansion value =' + str(pyo.value(instance.capacity_expansion_cost)))
         logger.info('fixed om cost value =' + str(pyo.value(instance.fixed_om_cost)))
-    if instance.sw_reserves:
+    if elec_config.spinning_reserve_required:
         logger.info('op res value =' + str(pyo.value(instance.operating_reserves_cost)))
-    if instance.sw_ramp:
+    if elec_config.ramping_required:
         logger.info('ramp cost value =' + str(pyo.value(instance.ramp_cost)))
-    if instance.sw_trade:
+    if elec_config.regional_exchange:
         logger.info('trade cost value =' + str(pyo.value(instance.trade_cost)))
 
     logger.info('Obj complete')
