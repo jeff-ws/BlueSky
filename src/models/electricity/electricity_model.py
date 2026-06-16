@@ -194,7 +194,7 @@ class PowerModel(Model):
             )
 
             # if capacity expansion and learning are on
-            if elec_config.expansion_learning_type > 0:
+            if elec_config.expansion_learning_type is not ExpansionLearningType.DISABLED:
                 self.declare_param(
                     'LearningRate', self.LearningRate_index, all_frames['LearningRate']
                 )
