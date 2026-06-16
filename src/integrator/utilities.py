@@ -15,14 +15,12 @@ import pyomo.opt as pyo
 from pyomo.environ import ConcreteModel, value
 import pandas as pd
 from pathlib import Path
-import logging
-import os
 
 # Import python modules
 from definitions import PROJECT_ROOT
 
 if typing.TYPE_CHECKING:
-    from src.models.electricity.scripts.electricity_model import PowerModel
+    from src.models.electricity.electricity_model import PowerModel
     from src.models.hydrogen.model.h2_model import H2Model
 
 # Establish logger

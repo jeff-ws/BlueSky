@@ -11,7 +11,7 @@ from src.integrator.utilities import (
     poll_h2_demand,
     update_h2_prices,
 )
-from src.models.electricity.scripts.runner import run_elec_model
+from src.models.electricity.runner import run_elec_model
 
 
 def test_poll_elec_prices():

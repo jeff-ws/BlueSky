@@ -3,9 +3,9 @@ from pathlib import Path
 import pandas as pd
 
 from src.common import config_setup
-from src.models.electricity.scripts.utilities import annual_count
-from src.models.electricity.scripts.runner import run_elec_model
-import src.models.electricity.scripts.preprocessor as prep
+from src.models.electricity.utilities import annual_count
+from src.models.electricity.runner import run_elec_model
+import src.models.electricity.preprocessor as prep
 from definitions import PROJECT_ROOT
 
 logger = getLogger(__name__)

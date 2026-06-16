@@ -11,10 +11,9 @@ from pyomo.environ import value
 # Import python modules
 from src.common.config_setup import Config_settings
 from src.integrator import utilities
-from src.models.electricity.scripts.runner import run_elec_model
+from src.models.electricity.runner import run_elec_model
 from src.models.hydrogen.model.actions import run_hydrogen_model
 from src.models.residential.scripts.residential import run_residential
-from src.integrator.progress_plot import plot_price_distro
 
 # Establish logger
 logger = getLogger(__name__)

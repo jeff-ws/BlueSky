@@ -38,7 +38,7 @@ from src.integrator.utilities import (
     poll_h2_demand,
     update_h2_prices,
 )
-from src.models.electricity.scripts.runner import (
+from src.models.electricity.runner import (
     run_elec_model,
     init_old_cap,
     update_cost,
@@ -46,7 +46,7 @@ from src.models.electricity.scripts.runner import (
 )
 from src.models.hydrogen.model import actions
 from src.models.residential.scripts.residential import residentialModule
-import src.models.electricity.scripts.postprocessor as post_elec
+import src.models.electricity.postprocessor as post_elec
 
 # Establish logger
 logger = getLogger(__name__)

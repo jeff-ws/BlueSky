@@ -5,9 +5,7 @@
 
 # Import pacakges
 from pathlib import Path
-import sys as sys
 from datetime import datetime
-import gc
 import pyomo.environ as pyo
 from pyomo.common.timing import TicTocTimer
 from pyomo.opt import SolutionStatus, SolverStatus, TerminationCondition
@@ -18,10 +16,10 @@ from logging import getLogger
 
 # Import python modules
 from definitions import PROJECT_ROOT
-import src.models.electricity.scripts.preprocessor as prep
-import src.models.electricity.scripts.postprocessor as post
-from src.models.electricity.scripts.utilities import check_results
-from src.models.electricity.scripts.electricity_model import PowerModel
+import src.models.electricity.preprocessor as prep
+import src.models.electricity.postprocessor as post
+from src.models.electricity.utilities import check_results
+from src.models.electricity.electricity_model import PowerModel
 from src.common.config_setup import Config_settings
 
 from src.integrator.utilities import select_solver

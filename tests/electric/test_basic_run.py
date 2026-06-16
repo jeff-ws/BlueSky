@@ -16,7 +16,7 @@ from pyomo.common.numeric_types import value
 
 from definitions import PROJECT_ROOT
 from src.common import config_setup
-from src.models.electricity.scripts.runner import run_elec_model
+from src.models.electricity.runner import run_elec_model
 
 
 def test_basic_run():

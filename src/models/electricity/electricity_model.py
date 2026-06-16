@@ -7,16 +7,14 @@ constraints, plus additional misc support functions.
 # Setup
 
 # Import packages
-from collections import defaultdict
 from logging import getLogger
 import pyomo.environ as pyo
 
 # Import python modules
-from src.integrator.utilities import HI
 from src.common.model import Model
 
 # move to new file
-from src.models.electricity.scripts.utilities import ElectricityMethods as em
+from src.models.electricity.utilities import ElectricityMethods as em
 
 # Establish logger
 logger = getLogger(__name__)

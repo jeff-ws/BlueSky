@@ -13,15 +13,13 @@ It writes out all relevant model outputs (e.g., variables, parameters, constrain
 # Setup
 
 # Import pacakges
-import pandas as pd
 import pyomo.environ as pyo
 import os
 from pathlib import Path
 from logging import getLogger
 
 # Import python modules
-from definitions import PROJECT_ROOT
-from src.models.electricity.scripts.utilities import create_obj_df
+from src.models.electricity.utilities import create_obj_df
 
 # Establish logger
 logger = getLogger(__name__)
