@@ -25,9 +25,9 @@ def test_years_set():
 
     # quick helper for annualizations....
     # quick test....  the aggregate weight of all the rep hours must = 8760
-    assert (
-        sum(annual_count(t, elec_model) for t in elec_model.hour) == 8760
-    ), 'Annualized hours do not add up!'
+    assert sum(annual_count(t, elec_model) for t in elec_model.hour) == 8760, (
+        'Annualized hours do not add up!'
+    )
 
     # the xor of the sets should be empty...
     assert len(elec_model.year ^ set(years)) == 0, 'some diff in expected sets'

@@ -86,7 +86,7 @@ class Config_settings:
         if test:
             OUTPUT_ROOT = Path(PROJECT_ROOT, 'unit_tests', 'test_logs')
         else:
-            output_folder_name = f"{self.selected_mode}_{datetime.now().strftime('%Y_%m_%d_%H%Mh')}"
+            output_folder_name = f'{self.selected_mode}_{datetime.now().strftime("%Y_%m_%d_%H%Mh")}'
             OUTPUT_ROOT = Path(PROJECT_ROOT / 'output' / output_folder_name)
         self.OUTPUT_ROOT = OUTPUT_ROOT
         make_dir(self.OUTPUT_ROOT)
