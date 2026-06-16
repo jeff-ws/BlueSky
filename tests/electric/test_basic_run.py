@@ -19,17 +19,37 @@ from src.common import config_setup
 from src.models.electricity.elec_config import ElecConfig
 from src.models.electricity.runner import run_elec_model
 
+# Test configurations with expected outputs:
+# Run Type                                  Total Cost         Variables    Constraints
+# ----------------------------------------  -----------------  -----------  -----------
+# Basic No-Frills                           3452103301.9            17886        19440
+# Exchange Enabled                          2278237043.0            21342        23088
+# Expansion (no learning)                   3455793875.5            18060        19566
+# Ramping Required                          3522284566.9            32862        41904
+# Reserve Margin (mandatory expansion)      4925573167.9            19212        22446
+# Agg Years                                 ??  Broken.  Suspect it is used in preprocessor
+
 configs = [
     ('basic_elec_config.toml', 3452103301.9, 17886, 19440),
     ('exchange_elec_config.toml', 2278237043.0, 21342, 23088),
     ('expansion_no_learning_elec_config.toml', 3455793875.5, 18060, 19566),
+    ('ramping_elec_config.toml', 3522284566.9, 32862, 41904),
+    ('reserve_with_expansion_no_learning_elec_config.toml', 4925573167.9, 19212, 22446),
+    ('agg_years_elec_config.toml', 3452103301.9, 17886, 19440),
 ]
 
 
 @pytest.mark.parametrize(
     'config_file,expected_total_cost,expected_nvariables,expected_nconstraints',
     configs,
-    ids=['Basic No-Frills', 'Exchange Enabled', 'Expansion (no learning)'],
+    ids=[
+        'Basic No-Frills',
+        'Exchange Enabled',
+        'Expansion (no learning)',
+        'Ramping Required',
+        'Reserve with Expansion (no learning)',
+        'Agg Years',
+    ],
 )
 def test_basic_run(config_file, expected_total_cost, expected_nvariables, expected_nconstraints):
     """
@@ -48,6 +68,9 @@ def test_basic_run(config_file, expected_total_cost, expected_nvariables, expect
     elec_config = ElecConfig.from_toml(elec_config_path)
 
     elec_model = run_elec_model(settings, elec_config, solve=True)
+
+    # for test development/capture:
+    print(value(elec_model.total_cost), elec_model.nvariables(), elec_model.nconstraints())
 
     assert value(elec_model.total_cost) == pytest.approx(expected_total_cost), (
         f'found {value(elec_model.total_cost)} total cost'

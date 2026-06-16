@@ -288,7 +288,9 @@ def set_new_cap(instance):
         if (tech, y) not in instance.new_cap:
             instance.new_cap[(tech, y)] = 0.0
         instance.new_cap[(tech, y)] = instance.new_cap[(tech, y)] + sum(
-            instance.capacity_builds[(r, tech, year, step)].value for year in instance.y if year < y
+            instance.capacity_builds[(r, tech, year, step)].value
+            for year in instance.year
+            if year < y
         )
         instance.new_cap_wt[(tech, y)] = instance.WeightYear[y] * instance.new_cap[(tech, y)]
 
